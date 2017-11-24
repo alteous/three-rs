@@ -131,8 +131,19 @@ fn main() {
     let mut cubes = create_cubes(&mut win.factory, &materials, &levels);
     cubes[0].group.set_parent(&win.scene);
 
+    let font = win.factory.load_font(concat!(env!("CARGO_MANIFEST_DIR"), "/data/fonts/DejaVuSans.ttf"));
+    let mut text = win.factory.ui_text(&font, "");
+    text.set_parent(&win.scene);
+
     let timer = win.input.time();
+    let mut times = Vec::<f64>::new();
     while win.update() && !win.input.hit(three::KEY_ESCAPE) {
+        times.push(win.input.delta_time() as f64);
+        if times.len() == 100 {
+            let average = times.iter().sum::<f64>() / times.len() as f64;
+            println!("average frame time: {} seconds", average);
+            break;
+        }
         let time = timer.get(&win.input);
         for cube in cubes.iter_mut() {
             let level = &levels[cube.level_id];
