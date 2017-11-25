@@ -101,9 +101,16 @@ fn create_cubes(
     list
 }
 
-const COLORS: [three::Color; 6] = [0xffff80, 0x8080ff, 0x80ff80, 0xff8080, 0x80ffff, 0xff80ff];
+const COLORS: &'static [three::Color] = &[
+    0xffff80,
+    0x8080ff,
+    0x80ff80,
+    0xff8080,
+    0x80ffff,
+    0xff80ff,
+];
 
-const SPEEDS: [f32; 5] = [
+const SPEEDS: &'static [f32] = &[
     0.7,
     -1.0,
     1.3,
@@ -141,7 +148,7 @@ fn main() {
         times.push(win.input.delta_time() as f64);
         if times.len() == 100 {
             let average = times.iter().sum::<f64>() / times.len() as f64;
-            println!("average frame time: {} seconds", average);
+            println!("average frame time: {} seconds ({} frames/second)", average, 1.0 / average);
             break;
         }
         let time = timer.get(&win.input);

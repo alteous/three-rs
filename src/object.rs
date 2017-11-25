@@ -146,7 +146,7 @@ impl Object {
     ) -> Node {
         let mut hub = scene.hub.lock().unwrap();
         hub.process_messages();
-        hub.update_graph();
+        hub.update_graph(scene);
         let node = &hub.nodes[&self.node];
         let root = &hub.nodes[&scene.object.node];
         assert_eq!(node.scene_id, root.scene_id);

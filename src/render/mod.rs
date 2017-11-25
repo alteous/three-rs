@@ -510,7 +510,7 @@ impl Renderer {
         let scene_id = hub.nodes[&scene.object.node].scene_id;
 
         hub.process_messages();
-        hub.update_graph();
+        hub.update_graph(scene);
 
         // update dynamic meshes
         for node in hub.nodes.iter_mut() {

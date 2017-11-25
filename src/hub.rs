@@ -6,6 +6,7 @@ use mesh::DynamicMesh;
 use node::{NodeInternal, NodePointer};
 use object::Object;
 use render::GpuData;
+use scene::Scene;
 use text::{Operation as TextOperation, TextData};
 
 use cgmath::Transform;
@@ -218,30 +219,22 @@ impl Hub {
         }
     }
 
-    pub(crate) fn update_graph(&mut self) {
-        let mut cursor = self.nodes.cursor();
-        while let Some((left, mut item, _)) = cursor.next() {
-            if !item.visible {
-                item.world_visible = false;
-                continue;
+    pub(crate) fn update_graph(&mut self, root: &Scene) {
+        let scene_id = self.nodes[&root.node].scene_id;
+        let mut stack = vec![root.node.clone()];
+        while let Some(ref ptr) = stack.pop() {
+            let parent_world_visible = self.nodes[ptr].world_visible;
+            let parent_world_transform = self.nodes[ptr].world_transform;
+            let mut cursor = self.nodes.cursor();
+            while let Some((_, ref mut node, _)) = cursor.next() {
+                if node.visible && node.parent.as_ref() == Some(ptr) {
+                    node.scene_id = scene_id;
+                    node.world_visible = parent_world_visible;
+                    node.world_transform = parent_world_transform
+                        .concat(&node.transform);
+                    stack.push(node.pin());
+                }
             }
-            let (visibility, affilation, transform) = match item.parent {
-                Some(ref parent_ptr) => match left.get(parent_ptr) {
-                    Some(parent) => (
-                        parent.world_visible,
-                        parent.scene_id,
-                        parent.world_transform.concat(&item.transform),
-                    ),
-                    None => {
-                        error!("Parent node was created after the child, ignoring");
-                        (false, item.scene_id, item.transform)
-                    }
-                },
-                None => (true, item.scene_id, item.transform),
-            };
-            item.world_visible = visibility;
-            item.scene_id = affilation;
-            item.world_transform = transform;
         }
     }
 

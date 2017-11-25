@@ -118,7 +118,7 @@ impl Scene {
     pub fn sync_guard<'a>(&'a mut self) -> SyncGuard<'a> {
         let mut hub = self.hub.lock().unwrap();
         hub.process_messages();
-        hub.update_graph();
+        hub.update_graph(self);
         let scene_id = hub.nodes[&self.object.node].scene_id;
         SyncGuard { hub, scene_id }
     }
