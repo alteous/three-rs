@@ -287,6 +287,7 @@ impl Factory {
                     pending: None,
                     instance_cache_key: None,
                 },
+                None,
             ),
         }
     }
@@ -334,6 +335,7 @@ impl Factory {
                     pending: None,
                     instance_cache_key: None,
                 },
+                None,
             ),
             geometry,
             dynamic: DynamicData {
@@ -353,7 +355,7 @@ impl Factory {
         let instances = self.create_instance_buffer();
         let mut hub = self.hub.lock().unwrap();
         let (material, gpu_data) = match hub[template].sub_node {
-            SubNode::Visual(ref mat, ref gpu) => {
+            SubNode::Visual(ref mat, ref gpu, _) => {
                 (mat.clone(), GpuData {
                     instances,
                     instance_cache_key: Some(InstanceCacheKey {
@@ -366,7 +368,7 @@ impl Factory {
             _ => unreachable!(),
         };
         Mesh {
-            object: hub.spawn_visual(material, gpu_data),
+            object: hub.spawn_visual(material, gpu_data, None),
         }
     }
 
@@ -381,7 +383,7 @@ impl Factory {
         let material = material.into();
         let mut hub = self.hub.lock().unwrap();
         let gpu_data = match hub[template].sub_node {
-            SubNode::Visual(_, ref gpu) => GpuData {
+            SubNode::Visual(_, ref gpu, _) => GpuData {
                 instances,
                 instance_cache_key: Some(InstanceCacheKey {
                     material: material.clone(),
@@ -392,7 +394,7 @@ impl Factory {
             _ => unreachable!(),
         };
         Mesh {
-            object: hub.spawn_visual(material, gpu_data),
+            object: hub.spawn_visual(material, gpu_data, None),
         }
     }
 
@@ -414,6 +416,7 @@ impl Factory {
                 pending: None,
                 instance_cache_key: None,
             },
+            None,
         ))
     }
 
@@ -910,6 +913,7 @@ impl Factory {
                             pending: None,
                             instance_cache_key: None,
                         },
+                        None,
                     ),
                 };
                 group.add(&mesh);
