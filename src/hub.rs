@@ -68,7 +68,7 @@ pub(crate) enum SubNode {
 
 pub(crate) type Message = (froggy::WeakPointer<NodeInternal>, Operation);
 #[derive(Debug)]
-pub(crate) enum Operation {
+pub(crate) enum Operationn {
     AddChild(NodePointer),
     RemoveChild(NodePointer),
     SetAudio(AudioOperation),
@@ -81,6 +81,7 @@ pub(crate) enum Operation {
     ),
     SetMaterial(Material),
     SetTexelRange(mint::Point2<i16>, mint::Vector2<u16>),
+    SetSkeleton(Skeleton),
     SetShadow(ShadowMap, ShadowProjection),
 }
 

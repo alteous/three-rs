@@ -97,6 +97,8 @@ gfx_defines! {
         uv: [f32; 2] = "a_TexCoord",
         normal: [gfx::format::I8Norm; 4] = "a_Normal",
         tangent: [gfx::format::I8Norm; 4] = "a_Tangent",
+        joints: [f32; 4] = "a_Joint",
+        weights: [f32; 4] = "a_Weight",
     }
 
     vertex Instance {
@@ -794,6 +796,7 @@ impl Renderer {
                 _ => continue,
             };
 
+<<<<<<< 791d56a96c3d46041e01bb853b2d8535759e922f
             let mx_world: mint::ColumnMatrix4<_> = Matrix4::from(w.world_transform).into();
             let pso_data = material.to_pso_data();
 
@@ -818,28 +821,30 @@ impl Renderer {
             }
             let instance = match pso_data {
                 PsoData::Basic { color, map, param0 } => {
-                    let uv_range = match map {
-                        Some(ref map) => map.uv_range(),
-                        None => [0.0; 4],
-                    };
-                    let mut joint_matrices = [Matrix4::identity(); 4];
+                    let mut joint_matrices = [Matrix4::identity(); 20];
                     if let &Some(ref object) = skeleton {
                         let data = match hub.get(object).sub_node {
                             hub::SubNode::Skeleton(ref data) => data,
                             _ => unreachable!(),
                         };
                         let (bones, ibms) = (&data.bones, &data.inverses);
-                        for i in 0..4 {
-                            let bone = &bones[i];
+                        if bones.len() > 20 {
+                            eprintln!("Joint limit exceeded ({}/20)", bones.len());
+                            ::std::process::exit(1);
+                        }
+                        for (i, (bone, ibm)) in izip!(bones.iter(), ibms.iter()).enumerate() {
                             let bone_transform = Matrix4::from(hub.get(bone).world_transform);
                             let inverse_world_transform = Matrix4::from(node.world_transform).invert().unwrap();
-                            let ibm = ibms[i];
-                            let jm = inverse_world_transform * bone_transform * Matrix4::from(ibm);
-
+                            let jm = inverse_world_transform * bone_transform * Matrix4::from(ibm.clone());
                             joint_matrices[i] = jm;
                         }
-                        Instance::basic(...)
-                   }
+                    }
+
+                    let uv_range = match map {
+                        Some(ref map) => map.uv_range(),
+                        None => [0.0; 4],
+                    };
+                }
                 PsoData::Pbr { .. } => Instance::pbr(mx_world.into()),
             };
 
