@@ -26,6 +26,7 @@ use audio;
 use camera::{Camera, Projection, ZRange};
 use color::{BLACK, Color};
 use geometry::{Geometry, Shape};
+use group::Group;
 use hub::{Hub, HubPtr, LightData, SubLight, SubNode};
 use light::{Ambient, Directional, Hemisphere, Point, ShadowMap};
 use material::{self, Material};
