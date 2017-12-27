@@ -768,7 +768,11 @@ impl Factory {
         let size = images[0].dimensions().0;
         let kind = t::Kind::Cube(size as t::Size);
         let (_, view) = factory
+<<<<<<< 32436594c0053d4f1ce9570e2fe7b25cca63d427
             .create_texture_immutable_u8::<gfx::format::Srgba8>(kind, t::Mipmap::Provided, &data)
+=======
+            .create_texture_immutable_u8::<gfx::format::Srgba8>(kind, gfx::texture::Mipmap::Allocated, &data)
+>>>>>>> Use patched version of gfx
             .unwrap_or_else(|e| {
                 panic!("Unable to create GPU texture for cubemap: {:?}", e);
             });
@@ -851,7 +855,11 @@ impl Factory {
         use gfx::texture as t;
         let kind = t::Kind::D2(width, height, t::AaMode::Single);
         let (_, view) = self.backend
+<<<<<<< 32436594c0053d4f1ce9570e2fe7b25cca63d427
             .create_texture_immutable_u8::<gfx::format::Srgba8>(kind, t::Mipmap::Provided, &[pixels])
+=======
+            .create_texture_immutable_u8::<gfx::format::Srgba8>(kind, gfx::texture::Mipmap::Allocated, &[pixels])
+>>>>>>> Use patched version of gfx
             .unwrap_or_else(|e| {
                 panic!("Unable to create GPU texture from memory: {:?}", e);
             });

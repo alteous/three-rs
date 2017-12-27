@@ -488,6 +488,7 @@ impl Renderer {
         use gfx::texture as t;
         let (window, device, mut gl_factory, out_color, out_depth) = gfx_window_glutin::init(builder, context, event_loop);
         let (_, srv_white) = gl_factory
+<<<<<<< 32436594c0053d4f1ce9570e2fe7b25cca63d427
             .create_texture_immutable::<gfx::format::Rgba8>(
                 t::Kind::D2(1, 1, t::AaMode::Single),
                 t::Mipmap::Provided,
@@ -499,6 +500,13 @@ impl Renderer {
                 t::Mipmap::Provided,
                 &[&[0x3F800000]],
             ).unwrap();
+=======
+            .create_texture_immutable::<gfx::format::Rgba8>(t::Kind::D2(1, 1, t::AaMode::Single), t::Mipmap::Provided, &[&[[0xFF; 4]]])
+            .unwrap();
+        let (_, srv_shadow) = gl_factory
+            .create_texture_immutable::<(gfx::format::R32, gfx::format::Float)>(t::Kind::D2(1, 1, t::AaMode::Single), t::Mipmap::Provided, &[&[0x3F800000]])
+            .unwrap();
+>>>>>>> Use patched version of gfx
         let sampler = gl_factory.create_sampler_linear();
         let sampler_shadow = gl_factory.create_sampler(t::SamplerInfo {
             comparison: Some(gfx::state::Comparison::Less),
