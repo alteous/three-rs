@@ -124,9 +124,6 @@ pub enum Interpolation {
 
     /// Smooth cubic interpolation between keyframe values.
     Cubic,
-
-    /// Smooth Catmull–Rom spline interpolation between keyframe values.
-    CatmullRom,
 }
 
 /// Describes the looping behaviour of an [`Action`].
