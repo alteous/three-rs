@@ -6,8 +6,11 @@ use std::collections::hash_map::{Entry, HashMap};
 use std::io::Read;
 use std::path::{Path, PathBuf};
 
-
-use cgmath::Vector3;
+use animation;
+use camera;
+use cgmath::{SquareMatrix, Matrix4, Vector3};
+use color;
+use genmesh::{Polygon, Triangulate};
 use gfx;
 use gfx::format::I8Norm;
 use gfx::traits::{Factory as Factory_, FactoryExt};
@@ -121,7 +124,7 @@ pub struct Gltf {
 
     /// Imported mesh templates.
     pub meshes: VecMap<Vec<Mesh>>,
-    
+
     /// The root node of the default scene.
     ///
     /// If the `glTF` contained no default scene then this group
@@ -207,9 +210,27 @@ impl Factory {
     pub fn skeleton(
         &mut self,
         bones: Vec<Bone>,
-        inverses: Vec<mint::ColumnMatrix4<f32>>,
+        inverse_bind_matrices: Vec<mint::ColumnMatrix4<f32>>,
     ) -> Skeleton {
-        let data = hub::SkeletonData { bones, inverses };
+        let gpu_buffer = self.backend
+            .create_buffer(
+                4 * bones.len(),
+                gfx::buffer::Role::Constant,
+                gfx::memory::Usage::Dynamic,
+                gfx::SHADER_RESOURCE,
+            )
+            .expect("create GPU target buffer");
+        let gpu_buffer_view = self.backend
+            .view_buffer_as_shader_resource(&gpu_buffer)
+            .expect("create shader resource view for GPU target buffer");
+        let mut cpu_buffer = Vec::with_capacity(bones.len());
+        for mx in &inverse_bind_matrices {
+            cpu_buffer.push(mx.x.into());
+            cpu_buffer.push(mx.y.into());
+            cpu_buffer.push(mx.z.into());
+            cpu_buffer.push(mx.w.into());
+        }
+        let data = hub::SkeletonData { bones, gpu_buffer, inverse_bind_matrices, gpu_buffer_view, cpu_buffer };
         let object = self.hub.lock().unwrap().spawn_skeleton(data);
         Skeleton { object }
     }
@@ -768,11 +789,7 @@ impl Factory {
         let size = images[0].dimensions().0;
         let kind = t::Kind::Cube(size as t::Size);
         let (_, view) = factory
-<<<<<<< 32436594c0053d4f1ce9570e2fe7b25cca63d427
             .create_texture_immutable_u8::<gfx::format::Srgba8>(kind, t::Mipmap::Provided, &data)
-=======
-            .create_texture_immutable_u8::<gfx::format::Srgba8>(kind, gfx::texture::Mipmap::Allocated, &data)
->>>>>>> Use patched version of gfx
             .unwrap_or_else(|e| {
                 panic!("Unable to create GPU texture for cubemap: {:?}", e);
             });
@@ -855,11 +872,7 @@ impl Factory {
         use gfx::texture as t;
         let kind = t::Kind::D2(width, height, t::AaMode::Single);
         let (_, view) = self.backend
-<<<<<<< 32436594c0053d4f1ce9570e2fe7b25cca63d427
             .create_texture_immutable_u8::<gfx::format::Srgba8>(kind, t::Mipmap::Provided, &[pixels])
-=======
-            .create_texture_immutable_u8::<gfx::format::Srgba8>(kind, gfx::texture::Mipmap::Allocated, &[pixels])
->>>>>>> Use patched version of gfx
             .unwrap_or_else(|e| {
                 panic!("Unable to create GPU texture from memory: {:?}", e);
             });

@@ -6,13 +6,14 @@ use material::{self, Material};
 use mesh::{DynamicMesh, MAX_TARGETS, Target, Weight};
 use node::{NodeInternal, NodePointer};
 use object::{self, Base};
-use render::GpuData;
+use render::{BackendResources, GpuData};
 use skeleton::{Bone, Skeleton};
 use text::{Operation as TextOperation, TextData};
 
 use arrayvec::ArrayVec;
 use cgmath::Transform;
 use froggy;
+use gfx;
 use mint;
 
 use std::{mem, ops};
@@ -39,7 +40,11 @@ pub(crate) struct LightData {
 #[derive(Clone, Debug)]
 pub(crate) struct SkeletonData {
     pub bones: Vec<Bone>,
-    pub inverses: Vec<mint::ColumnMatrix4<f32>>,
+    pub inverse_bind_matrices: Vec<mint::ColumnMatrix4<f32>>,
+
+    pub gpu_buffer_view: gfx::handle::ShaderResourceView<BackendResources, [f32; 4]>,
+    pub gpu_buffer: gfx::handle::Buffer<BackendResources, [f32; 4]>,
+    pub cpu_buffer: Vec<[f32; 4]>,
 }
 
 #[derive(Clone, Debug)]
@@ -188,7 +193,6 @@ impl Hub {
                         error!("Element {:?} is added to a group while still having old parent - {}",
                             child.sub_node, "discarding siblings");
                     }
-<<<<<<< 759ed7963528f51592fa34f4b734a702d841f42c
                     child.next_sibling = sibling;
                 }
                 Operation::RemoveChild(child_ptr) => {
@@ -261,22 +265,14 @@ impl Hub {
                         _ => unreachable!()
                     }
                 }
-            };
-=======
-                },
-                Operation::SetText(operation) => if let SubNode::UiText(ref mut data) = node.sub_node {
-                    Hub::process_text(operation, data);
-                },
-                Operation::SetSkeleton(skeleton) => if let SubNode::Visual(_, _, ref mut s) = node.sub_node {
-                    *s = Some(skeleton);
-                },
-                Operation::SetShadow(map, proj) => if let SubNode::Light(ref mut data) = node.sub_node {
-                    data.shadow = Some((map, proj));
+                Operation::SetSkeleton(skeleton) => {
+                    if let SubNode::Visual(_, _, ref mut s) = node.sub_node {
+                        *s = Some(skeleton);
+                    }
                 },
                 Operation::SetTargets(targets) => unimplemented!(),
                 Operation::SetWeights(weights) => unimplemented!(),
             }
->>>>>>> Add pipework for morph target implementation
         }
 
         self.nodes.sync_pending();
