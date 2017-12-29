@@ -549,7 +549,6 @@ impl Renderer {
             out_color,
             out_depth,
             pso,
-            default_joint_buffer,
             default_joint_buffer_view,
             map_default: Texture::new(srv_white, sampler, [1, 1]),
             shadow_default: Texture::new(srv_shadow, sampler_shadow, [1, 1]),
