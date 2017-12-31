@@ -1,6 +1,5 @@
 use object;
 
-use arrayvec::ArrayVec;
 use geometry::Geometry;
 use hub::Operation;
 use material::Material;
@@ -15,23 +14,26 @@ use std::hash::{Hash, Hasher};
 /// [`Mesh`]: struct.Mesh.html
 pub const MAX_TARGETS: usize = 9;
 
-/// Defines a weight target.
-#[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
+/// Defines a target of displacement.
+#[derive(Clone, Copy, Debug, PartialEq)]
 pub enum Target {
-    /// Position displacements.
+    /// Target the position attribute.
     Position,
 
-    /// Normal displacements.
+    /// Target the normal attribute,
     Normal,
 
-    /// Tangent displacements.
+    /// Target the tangent attribute.
     Tangent,
+
+    /// Leave attribute unchanged.
+    None,
 }
 
-pub enum Weight {
-    Position(f32),
-    Normal(f32),
-    Tangent(f32),
+impl Default for Target {
+    fn default() -> Self {
+        Target::None
+    }
 }
 
 /// [`Geometry`](struct.Geometry.html) with some [`Material`](struct.Material.html).
@@ -152,11 +154,20 @@ impl Mesh {
     }
 
     /// Bind a set of morph targets to the mesh.
-    pub fn set_targets<T: Into<ArrayVec<[Target; MAX_TARGETS]>>>(
+    pub fn set_targets(
         &mut self,
-        targets: T,
+        targets: [Target; MAX_TARGETS],
     ) {
-        let msg = Operation::SetTargets(targets.into());
+        let msg = Operation::SetTargets(targets);
+        let _ = self.object.tx.send((self.object.node.downgrade(), msg));
+    }
+
+    /// Set the morph target weights of a mesh.
+    pub fn set_weights(
+        &mut self,
+        weights: [f32; MAX_TARGETS],
+    ) {
+        let msg = Operation::SetWeights(weights);
         let _ = self.object.tx.send((self.object.node.downgrade(), msg));
     }
 }

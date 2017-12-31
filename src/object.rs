@@ -9,7 +9,6 @@ use mint;
 use hub::{Hub, Message, Operation, SubNode};
 use mesh::MAX_TARGETS;
 use node::{Node, NodePointer};
-use render::DisplacementContribution;
 use scene::Scene;
 
 //Note: no local state should be here, only remote links
@@ -214,9 +213,10 @@ impl Base {
         let _ = self.tx.send((self.node.downgrade(), msg));
     }
 
+    /// Set weights.
     pub fn set_weights(
         &mut self,
-        weights: [DisplacementContribution; MAX_TARGETS]
+        weights: [f32; MAX_TARGETS],
     ) {
         let msg = Operation::SetWeights(weights);
         let _ = self.tx.send((self.node.downgrade(), msg));
