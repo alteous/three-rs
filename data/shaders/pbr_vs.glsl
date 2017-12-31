@@ -43,13 +43,6 @@ in vec4 i_Color;
 in vec4 i_UvRange;
 
 // Toggles displacement contributions to `a_Position/a_Normal/a_Tangent`.
-//
-// Every entry is either `1.0` or `0.0` representing on/off state respectively.
-//
-// Each of `m.{x, y, z}` are mutually exclusive; that is, if `m.x = 1.0`
-// then `m.yz == {0.0, 0.0}` et cetera.
-//
-// `m.w` is the weight to be applied.
 struct DisplacementContribution {
     // position: 1.0 if morph target weights should influence a_Position
     // normal: 1.0 if morph target weights should influence a_Normal
