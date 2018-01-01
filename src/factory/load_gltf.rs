@@ -424,10 +424,36 @@ fn load_clips(
                     (Binding::Scale, Values::Scalar(values))
                 }
                 gltf::animation::TrsProperty::Weights => {
-                    let values = AccessorIter::<f32>::new(output, buffers)
-                        .collect::<Vec<_>>();
-                    assert_eq!(values.len(), times.len());
-                    (Binding::Weight(unimplemented!()), Values::Scalar(values))
+                    let mut values = Vec::with_capacity(times.len() * MAX_TARGETS);
+                    let mut iter = AccessorIter::<f32>::new(output, buffers);
+                    for _ in 0 .. times.len() {
+                        let foo = iter.next().unwrap();
+                        for _ in 0 .. 3 {
+                            values.push(foo);
+                        }
+                        let bar = iter.next().unwrap();
+                        for _ in 0 .. 3 {
+                            values.push(bar);
+                        }
+                        for _ in 0 .. 2 {
+                            values.push(0.0);
+                        }
+                    }
+                    // let nr_morph_targets = iter.len() / times.len();
+                    // println!("m = {}", nr_morph_targets);
+                    // for _ in 0 .. times.len() {
+                    //     for _ in 0 .. nr_morph_targets {
+                    //         values.push(iter.next().unwrap())
+                    //     }
+                    //     for _ in nr_morph_targets .. MAX_TARGETS {
+                    //         values.push(0.0);
+                    //     }   
+                    // }
+                    // for v in values.chunks(MAX_TARGETS) {
+                    //     println!("{:?}", v);
+                    // }
+                    // assert_eq!(values.len(), MAX_TARGETS * times.len());
+                    (Binding::Weights, Values::Scalar(values))
                 }
             };
             tracks.push((
