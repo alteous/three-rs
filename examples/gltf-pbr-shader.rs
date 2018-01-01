@@ -9,8 +9,9 @@ fn main() {
     win.scene.add(&light);
     win.scene.background = three::Background::Color(0xC6F0FF);
 
-    let default = concat!(env!("CARGO_MANIFEST_DIR"), "/test_data/Lantern.gltf");
+    let default = concat!(env!("CARGO_MANIFEST_DIR"), "/test_data/Lantern/Lantern.gltf");
     let path = std::env::args().nth(1).unwrap_or(default.into());
+    println!("Loading {:?} (this may take a while)", path);
     let mut gltf = win.factory.load_gltf(&path);
     win.scene.add(&gltf.group);
 
@@ -22,19 +23,16 @@ fn main() {
         default
     };
 
-    // To enable skybox remove this if expression.
-    if false {
-        let skybox_path = three::CubeMapPath {
-            front: "test_data/skybox/posz.jpg",
-            back: "test_data/skybox/negz.jpg",
-            up: "test_data/skybox/posy.jpg",
-            down: "test_data/skybox/negy.jpg",
-            left: "test_data/skybox/negx.jpg",
-            right: "test_data/skybox/posx.jpg",
-        };
-        let skybox = win.factory.load_cubemap(&skybox_path);
-        win.scene.background = three::Background::Skybox(skybox);
-    }
+    let skybox_path = three::CubeMapPath {
+        front: "test_data/skybox/posz.jpg",
+        back: "test_data/skybox/negz.jpg",
+        up: "test_data/skybox/posy.jpg",
+        down: "test_data/skybox/negy.jpg",
+        left: "test_data/skybox/negx.jpg",
+        right: "test_data/skybox/posx.jpg",
+    };
+    let skybox = win.factory.load_cubemap(&skybox_path);
+    win.scene.background = three::Background::Skybox(skybox);
 
     let init = win.scene
         .sync_guard()
@@ -45,6 +43,10 @@ fn main() {
         .move_speed(4.0)
         .build();
     while win.update() && !win.input.hit(three::KEY_ESCAPE) {
+        if win.input.hit(three::Key::P) {
+            let info = cam.sync(&win.scene);
+            println!("{:?}", info.world_transform);
+        }
         controls.update(&win.input);
         win.render(&cam);
     }

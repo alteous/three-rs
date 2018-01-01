@@ -54,3 +54,50 @@ glutin = { version = "0.12", optional = true }
 env_logger = "0.4"
 notify = "4"
 rand = "0.3"
+
+[[example]]
+name = "lights"
+
+[[example]]
+name = "materials"
+
+[[example]]
+name = "mesh-update"
+
+[[example]]
+name = "obj"
+
+[[example]]
+name = "reload"
+
+[[example]]
+name = "shapes"
+
+[[example]]
+name = "sprite"
+
+[[example]]
+name = "tutorial"
+
+[[example]]
+name = "gltf-pbr-shader"
+
+[[example]]
+name = "gltf-node-animation"
+
+[[example]]
+name = "gltf-vertex-skinning"
+
+[[example]]
+name = "gltf-morph-targets"
+
+[[example]]
+name = "group"
+
+[[example]]
+name = "anim"
+
+[[example]]
+name = "aviator"
+path = "examples/aviator/main.rs"
+
