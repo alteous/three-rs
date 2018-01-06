@@ -446,29 +446,6 @@ impl Factory {
             Target::Position => {
                 let begin = pi * nr_vertices;
                 let end = begin + nr_vertices;
-                pi += 1;
-                Either::Left(geometry.morph_targets.vertices[begin .. end].iter().cloned())
-            }
-            Target::Normal => {
-                let begin = ni * nr_vertices;
-                let end = begin + nr_vertices;
-                ni += 1;
-                Either::Left(geometry.morph_targets.normals[begin .. end].iter().cloned())
-            }
-            Target::Tangent => {
-                let begin = ti * nr_vertices;
-                let end = begin + nr_vertices;
-                ti += 1;
-                Either::Left(geometry.morph_targets.tangents[begin .. end].iter().cloned())
-            }
-            Target::None => {
-                Either::Right(infinite_zero_vector_iter.clone())
-            }
-        };
-        let displacements7_iter = match targets[7] {
-            Target::Position => {
-                let begin = pi * nr_vertices;
-                let end = begin + nr_vertices;
                 Either::Left(geometry.morph_targets.vertices[begin .. end].iter().cloned())
             }
             Target::Normal => {
@@ -500,10 +477,9 @@ impl Factory {
                 displacements4_iter,
                 displacements5_iter,
                 displacements6_iter,
-                displacements7_iter
             )
         )
-            .map(|(pos, normal, tangent, uv, joint_indices, joint_weights, (d0, d1, d2, d3, d4, d5, d6, d7))| {
+            .map(|(pos, normal, tangent, uv, joint_indices, joint_weights, (d0, d1, d2, d3, d4, d5, d6))| {
                 Vertex {
                     pos: [pos.x, pos.y, pos.z, 1.0],
                     normal,
@@ -518,7 +494,6 @@ impl Factory {
                     displacement4: [d4.x, d4.y, d4.z, 0.0],
                     displacement5: [d5.x, d5.y, d5.z, 0.0],
                     displacement6: [d6.x, d6.y, d6.z, 0.0],
-                    displacement7: [d7.x, d7.y, d7.z, 0.0],
                 }
             })
             .collect()

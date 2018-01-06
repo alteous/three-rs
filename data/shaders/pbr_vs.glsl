@@ -21,7 +21,6 @@
 
 #version 150 core
 #include <globals>
-#include <morph_targets>
 
 in vec4 a_Position;
 in vec2 a_TexCoord;
@@ -29,6 +28,13 @@ in vec4 a_Normal;
 in vec4 a_Tangent;
 in vec4 a_JointIndices;
 in vec4 a_JointWeights;
+in vec4 a_Displacement0;
+in vec4 a_Displacement1;
+in vec4 a_Displacement2;
+in vec4 a_Displacement3;
+in vec4 a_Displacement4;
+in vec4 a_Displacement5;
+in vec4 a_Displacement6;
 
 out vec3 v_Position;
 out vec2 v_TexCoord;
@@ -38,9 +44,6 @@ out vec3 v_Normal;
 in vec4 i_World0;
 in vec4 i_World1;
 in vec4 i_World2;
-in vec4 i_MatParams;
-in vec4 i_Color;
-in vec4 i_UvRange;
 
 // Toggles displacement contributions to `a_Position/a_Normal/a_Tangent`.
 struct DisplacementContribution {
@@ -52,7 +55,7 @@ struct DisplacementContribution {
 };
 
 layout(std140) uniform b_DisplacementContributions {
-    DisplacementContribution u_DisplacementContributions[8];
+    DisplacementContribution u_DisplacementContributions[7];
 };
 
 uniform samplerBuffer b_JointTransforms;
@@ -87,12 +90,11 @@ vec4 compute_local_position()
     position.xyz += u_DisplacementContributions[4].position * u_DisplacementContributions[4].weight * a_Displacement4.xyz;
     position.xyz += u_DisplacementContributions[5].position * u_DisplacementContributions[5].weight * a_Displacement5.xyz;
     position.xyz += u_DisplacementContributions[6].position * u_DisplacementContributions[6].weight * a_Displacement6.xyz;
-    position.xyz += u_DisplacementContributions[7].position * u_DisplacementContributions[7].weight * a_Displacement7.xyz;
 
     return position;
 }
 
-vec3 compute_world_normal()
+vec3 compute_local_normal()
 {
     vec3 normal = a_Normal.xyz;
 
@@ -103,12 +105,11 @@ vec3 compute_world_normal()
     normal += u_DisplacementContributions[4].normal * u_DisplacementContributions[4].weight * a_Displacement4.xyz;
     normal += u_DisplacementContributions[5].normal * u_DisplacementContributions[5].weight * a_Displacement5.xyz;
     normal += u_DisplacementContributions[6].normal * u_DisplacementContributions[6].weight * a_Displacement6.xyz;
-    normal += u_DisplacementContributions[7].normal * u_DisplacementContributions[7].weight * a_Displacement7.xyz;
 
-    return normalize(vec3(u_World * vec4(normal, 0.0)));
+    return normal;
 }
 
-vec3 compute_world_tangent()
+vec3 compute_local_tangent()
 {
     vec3 tangent = a_Tangent.xyz;
 
@@ -119,9 +120,8 @@ vec3 compute_world_tangent()
     tangent += u_DisplacementContributions[4].tangent * u_DisplacementContributions[4].weight * a_Displacement4.xyz;
     tangent += u_DisplacementContributions[5].tangent * u_DisplacementContributions[5].weight * a_Displacement5.xyz;
     tangent += u_DisplacementContributions[6].tangent * u_DisplacementContributions[6].weight * a_Displacement6.xyz;
-    tangent += u_DisplacementContributions[7].tangent * u_DisplacementContributions[7].weight * a_Displacement7.xyz;
 
-    return normalize(vec3(u_World * vec4(tangent, 0.0)));
+    return tangent;
 }
 
 void main()
@@ -131,9 +131,12 @@ void main()
     mat4 mx_skin = compute_skin_transform();
 
     vec4 local_position = compute_local_position();
+    vec3 local_normal = compute_local_normal();
+    vec3 local_tangent = compute_local_tangent();
+
     vec4 world_position = mx_world * local_position;
-    vec3 world_normal = compute_world_normal();
-    vec3 world_tangent = compute_world_tangent();
+    vec3 world_normal = normalize(vec3(mx_world * vec4(local_normal, 0.0)));
+    vec3 world_tangent = normalize(vec3(mx_world * vec4(local_tangent, 0.0)));
     vec3 world_bitangent = cross(world_normal, world_tangent) * a_Tangent.w;
 
     v_Tbn = mat3(world_tangent, world_bitangent, world_normal);

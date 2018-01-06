@@ -12,7 +12,7 @@ use std::hash::{Hash, Hasher};
 ///
 /// [`Target`]: enum.Target.html
 /// [`Mesh`]: struct.Mesh.html
-pub const MAX_TARGETS: usize = 8;
+pub const MAX_TARGETS: usize = 7;
 
 /// Defines a target of displacement.
 #[derive(Clone, Copy, Debug, PartialEq)]

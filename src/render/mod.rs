@@ -106,7 +106,6 @@ pub const DEFAULT_VERTEX: Vertex = Vertex {
     displacement4: [0.0, 0.0, 0.0, 0.0],
     displacement5: [0.0, 0.0, 0.0, 0.0],
     displacement6: [0.0, 0.0, 0.0, 0.0],
-    displacement7: [0.0, 0.0, 0.0, 0.0],
 };
 
 impl Default for Vertex {
@@ -118,7 +117,6 @@ impl Default for Vertex {
 /// Set of zero valued displacement contribution which cause vertex attributes
 /// to be unchanged by morph targets.
 pub const ZEROED_DISPLACEMENT_CONTRIBUTION: [DisplacementContribution; MAX_TARGETS] = [
-    DisplacementContribution { position: 0.0, normal: 0.0, tangent: 0.0, weight: 0.0 },
     DisplacementContribution { position: 0.0, normal: 0.0, tangent: 0.0, weight: 0.0 },
     DisplacementContribution { position: 0.0, normal: 0.0, tangent: 0.0, weight: 0.0 },
     DisplacementContribution { position: 0.0, normal: 0.0, tangent: 0.0, weight: 0.0 },
@@ -144,7 +142,6 @@ gfx_defines! {
         displacement4: [f32; 4] = "a_Displacement4",
         displacement5: [f32; 4] = "a_Displacement5",
         displacement6: [f32; 4] = "a_Displacement6",
-        displacement7: [f32; 4] = "a_Displacement7",
     }
 
     vertex Instance {
@@ -914,22 +911,23 @@ impl Renderer {
 
             if let Some(ref key) = gpu_data.instance_cache_key {
                 let uv_range = [0.0; 4];
-                let (color, mat_param) = match pso_data {
-                    PsoData::Basic { color, param0, .. } => (color, param0),
-                    PsoData::Pbr { .. } => (!0, 0.0),
+                match pso_data {
+                    PsoData::Basic { color, param0, .. } => {
+                        let vec = self.instance_cache.entry(key.clone()).or_insert((
+                            InstanceData {
+                                slice: gpu_data.slice.clone(),
+                                vertices: gpu_data.vertices.clone(),
+                                pso_data: pso_data.clone(),
+                                material: material.clone(),
+                            },
+                            Vec::new(),
+                        ));
+                        vec.1.push(Instance::basic(mx_world.into(), color, uv_range, param0));
+                        // Create a new instance and defer the draw call.
+                        continue;
+                    }
+                    _ => {}
                 };
-                let vec = self.instance_cache.entry(key.clone()).or_insert((
-                    InstanceData {
-                        slice: gpu_data.slice.clone(),
-                        vertices: gpu_data.vertices.clone(),
-                        pso_data: pso_data.clone(),
-                        material: material.clone(),
-                    },
-                    Vec::new(),
-                ));
-                vec.1
-                    .push(Instance::basic(mx_world.into(), color, uv_range, mat_param));
-                continue;
             }
             let instance = match pso_data {
                 PsoData::Basic { color, map, param0 } => {
@@ -953,7 +951,7 @@ impl Renderer {
             } else {
                 self.default_joint_buffer_view.clone()
             };
-            
+
             Self::render_mesh(
                 &mut self.encoder,
                 self.const_buf.clone(),
