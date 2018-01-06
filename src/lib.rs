@@ -298,7 +298,6 @@ pub mod custom;
 mod data;
 mod factory;
 pub mod geometry;
-mod group;
 mod hub;
 mod input;
 pub mod light;
@@ -336,9 +335,6 @@ pub use geometry::Geometry;
 pub use glutin::VirtualKeyCode as Key;
 
 #[doc(inline)]
-pub use group::Group;
-
-#[doc(inline)]
 pub use material::Material;
 
 #[doc(inline)]
@@ -348,7 +344,7 @@ pub use mesh::{DynamicMesh, Mesh};
 pub use node::{Node, Transform, Local, World};
 
 #[doc(inline)]
-pub use object::Object;
+pub use object::{Group, Object};
 
 #[doc(inline)]
 pub use render::Renderer;

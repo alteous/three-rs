@@ -48,14 +48,14 @@ fn build_scene_hierarchy(
 
     for node in scene.nodes() {
         let mut group = factory.group();
-        group.set_parent(root);
+        root.add(&group);
         stack.push(Item { group, node });
     }
 
     while let Some(Item { group, node }) = stack.pop() {
         for child_node in node.children() {
             let mut child_group = factory.group();
-            child_group.set_parent(&group);
+            group.add(&child_group);
             stack.push(Item { group: child_group, node: clone_child_node(gltf, &child_node) });
         }
         heirarchy.insert(node.index(), group);
@@ -302,12 +302,12 @@ fn load_meshes(
             } else {
                 Vec::new()
             };
-            let joints = if let Some(iter) = primitive.joints_u16(0, buffers) {
+            let joint_indices = if let Some(iter) = primitive.joints_u16(0, buffers) {
                 iter.map(|x| [x[0] as f32, x[1] as f32, x[2] as f32, x[3] as f32]).collect()
             } else {
                 Vec::new()
             };
-            let weights = if let Some(iter) = primitive.weights_f32(0, buffers) {
+            let joint_weights = if let Some(iter) = primitive.weights_f32(0, buffers) {
                 iter.collect()
             } else {
                 Vec::new()
@@ -360,7 +360,7 @@ fn load_skeletons(
         }
         for joint in skin.joints() {
             let mut bone = factory.bone();
-            bone.set_parent(&heirarchy[&joint.index()]);
+            heirarchy[&joint.index()].add(&bone);
             bones.push(bone);
         }
         let skeleton = factory.skeleton(bones, ibms);
@@ -499,12 +499,12 @@ fn bind_objects(
                     .iter()
                     .map(|template| factory.mesh_instance(template))
                     .collect::<Vec<Mesh>>();
-                for primitive in &mut primitives {
-                    primitive.set_parent(group);
+                for primitive in &primitives {
+                    group.add(primitive);
                 }
                 if let Some(skin) = node.skin() {
                     let mut skeleton = skeletons[skin.index()].clone();
-                    skeleton.set_parent(group);
+                    group.add(&skeleton);
                     for primitive in &mut primitives {
                         primitive.set_skeleton(skeleton.clone());
                     }

@@ -3,31 +3,7 @@
 use genmesh::{EmitTriangles, Triangulate, Vertex as GenVertex};
 use genmesh::generators::{self, IndexedPolygon, SharedVertex};
 use mint;
-use std::collections::HashMap;
-
-/// A shape of geometry that is used for mesh blending.
-#[derive(Clone, Debug, Default)]
-pub struct Shape {
-    /// Vertices.
-    pub vertices: Vec<mint::Point3<f32>>,
-    /// Normals.
-    pub normals: Vec<mint::Vector3<f32>>,
-    /// Tangents.
-    pub tangents: Vec<mint::Vector4<f32>>,
-    /// Texture co-ordinates.
-    pub tex_coords: Vec<mint::Point2<f32>>,
-    /// Joint indices, encoded as floats.
-    pub joints: Vec<[f32; 4]>,
-    /// Joint weights.
-    pub weights: Vec<[f32; 4]>,
-}
-
-impl Shape {
-    /// Creates an empty shape.
-    pub fn empty() -> Self {
-        Default::default()
-    }
-}
+use vec_map::VecMap;
 
 /// A collection of vertices, their normals, and faces that defines the
 /// shape of a polyhedral object.
@@ -174,11 +150,8 @@ impl Geometry {
     /// ```
     pub fn with_vertices(vertices: Vec<mint::Point3<f32>>) -> Self {
         Geometry {
-            base_shape: Shape {
-                vertices,
-                normals: Vec::new(),
-                ..Shape::empty()
-            },
+            vertices,
+            normals: Vec::new(),
             ..Geometry::empty()
         }
     }
@@ -195,18 +168,14 @@ impl Geometry {
         Fnor: Fn(GenVertex) -> mint::Vector3<f32>,
     {
         Geometry {
-            base_shape: Shape {
-                vertices: gen.shared_vertex_iter().map(fpos).collect(),
-                normals: gen.shared_vertex_iter().map(fnor).collect(),
-                // @alteous: TODO: Add similar functions for tangents and texture
-                // co-ordinates
-                ..Shape::empty()
-            },
-            shapes: HashMap::new(),
+            vertices: gen.shared_vertex_iter().map(fpos).collect(),
+            normals: gen.shared_vertex_iter().map(fnor).collect(),
+            // TODO: Add similar functions for tangents and texture co-ords
             faces: gen.indexed_polygon_iter()
                 .triangulate()
                 .map(|t| [t.x as u32, t.y as u32, t.z as u32])
                 .collect(),
+            .. Default::default()
         }
     }
 

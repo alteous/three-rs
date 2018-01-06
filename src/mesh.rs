@@ -12,7 +12,7 @@ use std::hash::{Hash, Hasher};
 ///
 /// [`Target`]: enum.Target.html
 /// [`Mesh`]: struct.Mesh.html
-pub const MAX_TARGETS: usize = 9;
+pub const MAX_TARGETS: usize = 8;
 
 /// Defines a target of displacement.
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -140,8 +140,7 @@ impl Mesh {
         &mut self,
         material: M,
     ) {
-        let msg = Operation::SetMaterial(material.into());
-        let _ = self.object.tx.send((self.object.node.downgrade(), msg));
+        self.as_ref().send(Operation::SetMaterial(material.into()));
     }
 
     /// Bind a skeleton to the mesh.
@@ -149,8 +148,7 @@ impl Mesh {
         &mut self,
         skeleton: Skeleton,
     ) {
-        let msg = Operation::SetSkeleton(skeleton);
-        let _ = self.object.tx.send((self.object.node.downgrade(), msg));
+        self.as_ref().send(Operation::SetSkeleton(skeleton));
     }
 
     /// Set the morph target weights of a mesh.
@@ -158,15 +156,14 @@ impl Mesh {
         &mut self,
         weights: [f32; MAX_TARGETS],
     ) {
-        let msg = Operation::SetWeights(weights);
-        let _ = self.object.tx.send((self.object.node.downgrade(), msg));
+        self.as_ref().send(Operation::SetWeights(weights));
     }
 }
 
 impl DynamicMesh {
     /// Returns the number of vertices of the geometry base shape.
     pub fn vertex_count(&self) -> usize {
-        self.geometry.base_shape.vertices.len()
+        self.geometry.vertices.len()
     }
 
     /// Set mesh material.
@@ -174,7 +171,6 @@ impl DynamicMesh {
         &mut self,
         material: M,
     ) {
-        let msg = Operation::SetMaterial(material.into());
-        let _ = self.object.tx.send((self.object.node.downgrade(), msg));
+        self.as_ref().send(Operation::SetMaterial(material.into()));
     }
 }

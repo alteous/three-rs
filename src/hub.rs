@@ -1,12 +1,12 @@
 use audio::{AudioData, Operation as AudioOperation};
 use color::{self, Color};
 use light::{ShadowMap, ShadowProjection};
+use material::Material;
+use mesh::{DynamicMesh, MAX_TARGETS};
 use node::{NodeInternal, NodePointer, TransformInternal};
-use material::{self, Material};
-use mesh::{DynamicMesh, MAX_TARGETS, Target, Weight};
-use node::{NodeInternal, NodePointer};
-use object::{self, Base};
-use render::{BackendResources, DisplacementContribution, GpuData};
+use object::{Base, Object};
+use render::{BackendResources, GpuData};
+use scene::Scene;
 use skeleton::{Bone, Skeleton};
 use text::{Operation as TextOperation, TextData};
 
@@ -73,7 +73,7 @@ pub(crate) enum SubNode {
 
 pub(crate) type Message = (froggy::WeakPointer<NodeInternal>, Operation);
 #[derive(Debug)]
-pub(crate) enum Operationn {
+pub(crate) enum Operation {
     AddChild(NodePointer),
     RemoveChild(NodePointer),
     SetAudio(AudioOperation),
@@ -125,6 +125,20 @@ impl Hub {
         Arc::new(Mutex::new(hub))
     }
 
+    pub(crate) fn get<T: Object>(
+        &self,
+        object: &T,
+    ) -> &NodeInternal {
+        &self.nodes[&object.as_ref().node]
+    }
+
+    pub(crate) fn get_mut<T: Object>(
+        &mut self,
+        object: &T,
+    ) -> &NodeInternal {
+        &mut self.nodes[&object.as_ref().node]
+    }
+
     pub(crate) fn spawn(
         &mut self,
         sub: SubNode,
@@ -170,9 +184,6 @@ impl Hub {
                         Hub::process_audio(operation, data);
                     }
                 },
-                Operation::SetParent(parent) => {
-                    self.nodes[&ptr].parent = Some(parent);
-                }
                 Operation::SetVisible(visible) => {
                     self.nodes[&ptr].visible = visible;
                 }
@@ -251,7 +262,10 @@ impl Hub {
                     }
                 },
                 Operation::SetWeights(weights) => {
-                    fn set_weights(gpu_data: &mut GpuData, weights: [f32; MAX_TARGETS]) {
+                    fn set_weights(
+                        gpu_data: &mut GpuData,
+                        weights: [f32; MAX_TARGETS],
+                    ) {
                         for i in 0 .. MAX_TARGETS {
                             gpu_data.displacement_contributions[i].weight = weights[i];
                         }
@@ -260,20 +274,25 @@ impl Hub {
                     // Hack around borrow checker rules:
                     // if
                     {
-                        if let SubNode::Visual(_, ref mut gpu_data, _) = self.nodes[&ptr].sub_node {
-                            set_weights(gpu_data, weights);
-                            continue;
+                        match self.nodes[&ptr].sub_node {
+                            SubNode::Visual(_, ref mut gpu_data, _) => {
+                                set_weights(gpu_data, weights);
+                            }
+                            _ => continue,
                         }
                     }
                     // else
                     {
-                        for item in self.nodes.iter_mut() {
-                            let update = item.parent.as_ref() == Some(&ptr);
-                            if update {
-                                if let SubNode::Visual(_, ref mut gpu_data, _) = item.sub_node {
+                        // Set the weights of every immediate child node.
+                        let mut x = self.nodes[&ptr].next_sibling.clone();
+                        while let Some(child_ptr) = x {
+                            match &mut self.nodes[&child_ptr].sub_node {
+                                &mut SubNode::Visual(_, ref mut gpu_data, _) => {
                                     set_weights(gpu_data, weights);
                                 }
+                                _ => {},
                             }
+                            x = self.nodes[&child_ptr].next_sibling.clone();
                         }
                     }
                 }
@@ -295,7 +314,7 @@ impl Hub {
                 }
                 Operation::SetMaterial(material) => {
                     match self.nodes[&ptr].sub_node {
-                        SubNode::Visual(ref mut mat, _) => {
+                        SubNode::Visual(ref mut mat, _, _) => {
                             *mat = material;
                         }
                         _ => unreachable!()
@@ -303,7 +322,7 @@ impl Hub {
                 }
                 Operation::SetTexelRange(base, size) => {
                     match self.nodes[&ptr].sub_node {
-                        SubNode::Visual(Material::Sprite(ref mut params), _) => {
+                        SubNode::Visual(Material::Sprite(ref mut params), _, _) => {
                             params.map.set_texel_range(base, size);
                         }
                         _ => unreachable!()
@@ -349,12 +368,43 @@ impl Hub {
         }
     }
 
+    pub(crate) fn update_graph(
+        &mut self,
+        scene: &Scene,
+    ) {
+        struct Item {
+            ptr: NodePointer,
+            xform: TransformInternal,
+        }
+
+        let mut stack = vec![];
+        if let Some(child_ptr) = scene.first_child.clone() {
+            stack.push(Item {
+                ptr: child_ptr,
+                xform: TransformInternal::one(),
+            });
+        }
+
+        while let Some(item) = stack.pop() {
+            let mut x = self.nodes[&item.ptr].next_sibling.clone();
+            while let Some(child_ptr) = x {
+                let local_xform = self.nodes[&child_ptr].transform.clone();
+                let global_xform = item.xform.concat(&local_xform);
+                x = self.nodes[&child_ptr].next_sibling.clone();
+                stack.push(Item {
+                    ptr: child_ptr,
+                    xform: global_xform,
+                });
+            }
+        }
+    }
+
     pub(crate) fn update_mesh(
         &mut self,
         mesh: &DynamicMesh,
     ) {
-        match self.get_mut(&mesh).sub_node {
-            SubNode::Visual(_, ref mut gpu_data, _) => gpu_data.pending = Some(mesh.dynamic.clone()),
+        match &mut self.nodes[&mesh.as_ref().node].sub_node {
+            &mut SubNode::Visual(_, ref mut gpu_data, _) => gpu_data.pending = Some(mesh.dynamic.clone()),
             _ => unreachable!(),
         }
     }

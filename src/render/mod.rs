@@ -3,16 +3,16 @@
 use cgmath::{Matrix4, SquareMatrix, Transform as Transform_, Vector3};
 use froggy;
 use gfx;
+use gfx::format::I8Norm;
 use gfx::handle as h;
 use gfx::memory::Typed;
-use gfx::traits::{Device, Factory as Factory_, FactoryExt};
+use gfx::traits::{Factory as Factory_, FactoryExt};
 #[cfg(feature = "opengl")]
 use gfx_device_gl as back;
 #[cfg(feature = "opengl")]
 use gfx_window_glutin;
 #[cfg(feature = "opengl")]
 use glutin;
-use hub;
 use mint;
 
 pub mod source;
@@ -136,8 +136,16 @@ gfx_defines! {
         uv: [f32; 2] = "a_TexCoord",
         normal: [gfx::format::I8Norm; 4] = "a_Normal",
         tangent: [gfx::format::I8Norm; 4] = "a_Tangent",
-        joints: [f32; 4] = "a_JointIndices",
-        weights: [f32; 4] = "a_JointWeights",
+        joint_indices: [f32; 4] = "a_JointIndices",
+        joint_weights: [f32; 4] = "a_JointWeights",
+        displacement0: [f32; 4] = "a_Displacement0",
+        displacement1: [f32; 4] = "a_Displacement1",
+        displacement2: [f32; 4] = "a_Displacement2",
+        displacement3: [f32; 4] = "a_Displacement3",
+        displacement4: [f32; 4] = "a_Displacement4",
+        displacement5: [f32; 4] = "a_Displacement5",
+        displacement6: [f32; 4] = "a_Displacement6",
+        displacement7: [f32; 4] = "a_Displacement7",
     }
 
     vertex Instance {
@@ -305,6 +313,7 @@ pub(crate) struct GpuData {
     pub instances: h::Buffer<back::Resources, Instance>,
     pub pending: Option<DynamicData>,
     pub instance_cache_key: Option<InstanceCacheKey>,
+    pub displacement_contributions: [DisplacementContribution; MAX_TARGETS],
 }
 
 #[derive(Clone, Debug)]
@@ -313,7 +322,6 @@ struct InstanceData {
     pub vertices: h::Buffer<back::Resources, Vertex>,
     pub pso_data: PsoData,
     pub material: Material,
-    pub displacement_contributions: [DisplacementContribution; MAX_TARGETS],
 }
 
 #[derive(Clone, Debug)]
@@ -571,7 +579,7 @@ impl Renderer {
                     [0.0, 0.0, 0.0, 1.0],
                 ],
                 gfx::buffer::Role::Constant,
-                gfx::SHADER_RESOURCE,
+                gfx::memory::Bind::SHADER_RESOURCE,
             )
             .unwrap();
         let default_joint_buffer_view = gl_factory
@@ -669,7 +677,7 @@ impl Renderer {
     ) {
         let mut hub = scene.hub.lock().unwrap();
         hub.process_messages();
-        hub.update_graph();
+        hub.update_graph(scene);
         {
             // Update joint transforms of skeletons
             let mut cursor = hub.nodes.cursor();
@@ -708,7 +716,7 @@ impl Renderer {
                 continue;
             }
             match node.sub_node {
-                SubNode::Visual(_, ref mut gpu_data) => {
+                SubNode::Visual(_, ref mut gpu_data, _) => {
                     if let Some(dynamic) = gpu_data.pending.take() {
                         self.encoder
                             .copy_buffer(
@@ -836,7 +844,7 @@ impl Renderer {
 
             for w in hub.walk(&scene.first_child) {
                 let gpu_data = match w.node.sub_node {
-                    SubNode::Visual(_, ref data) => data,
+                    SubNode::Visual(_, ref data, _) => data,
                     _ => continue,
                 };
                 let mx_world: mint::ColumnMatrix4<_> = Matrix4::from(w.world_transform).into();
