@@ -8,7 +8,6 @@ use std::path::{Path, PathBuf};
 
 use animation;
 use cgmath::Vector3;
-use genmesh::Triangulate;
 use gfx;
 use gfx::format::I8Norm;
 use gfx::traits::{Factory as Factory_, FactoryExt};
@@ -543,8 +542,7 @@ impl Factory {
         targets: [Target; MAX_TARGETS],
     ) -> Mesh {
         let vertices = Self::mesh_vertices(&geometry, targets);
-        let cbuf = self.backend.create_constant_buffer(1);
-        let (vbuf, slice) = if geometry.faces.is_empty() {
+        let (vbuf, mut slice) = if geometry.faces.is_empty() {
             self.backend.create_vertex_buffer_with_slice(&vertices, ())
         } else {
             let faces: &[u32] = gfx::memory::cast_slice(&geometry.faces);

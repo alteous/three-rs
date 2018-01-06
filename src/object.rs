@@ -92,7 +92,7 @@ pub trait Object: AsRef<Base> {
 
     /// Set weights.
     fn set_weights(
-        &mut self,
+        &self,
         weights: [f32; MAX_TARGETS],
     ) {
         self.as_ref().send(Operation::SetWeights(weights));

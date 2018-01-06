@@ -13,7 +13,7 @@ fn main() {
     let path = std::env::args().nth(1).unwrap_or(default.into());
     println!("Loading {:?} (this may take a while)", path);
     let mut gltf = win.factory.load_gltf(&path);
-    win.scene.add(&gltf.group);
+    win.scene.add(&gltf);
 
     let cam = if gltf.cameras.len() > 0 {
         gltf.cameras.swap_remove(0)
@@ -43,10 +43,6 @@ fn main() {
         .move_speed(4.0)
         .build();
     while win.update() && !win.input.hit(three::KEY_ESCAPE) {
-        if win.input.hit(three::Key::P) {
-            let info = cam.sync(&win.scene);
-            println!("{:?}", info.world_transform);
-        }
         controls.update(&win.input);
         win.render(&cam);
     }

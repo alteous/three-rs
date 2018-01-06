@@ -61,7 +61,7 @@ const STENCIL_SIDE: gfx::state::StencilSide = gfx::state::StencilSide {
 };
 
 #[cfg_attr(rustfmt, rustfmt_skip)]
-quick_error! {
+quick_error! { 
     #[doc = "Error encountered when building pipelines."]
     #[derive(Debug)]
     pub enum PipelineCreationError {
@@ -99,7 +99,6 @@ pub const DEFAULT_VERTEX: Vertex = Vertex {
     tangent: [I8Norm(127), I8Norm(0), I8Norm(0), I8Norm(0)],
     joint_indices: [0.0, 0.0, 0.0, 0.0],
     joint_weights: [1.0, 1.0, 1.0, 1.0],
-
     displacement0: [0.0, 0.0, 0.0, 0.0],
     displacement1: [0.0, 0.0, 0.0, 0.0],
     displacement2: [0.0, 0.0, 0.0, 0.0],
@@ -905,10 +904,11 @@ impl Renderer {
 
         for w in hub.walk(&scene.first_child) {
             let (material, gpu_data, skeleton) = match w.node.sub_node {
-                SubNode::Visual(ref mat, ref data, ref skeleton) => (mat, data, skeleton),
+                SubNode::Visual(ref material, ref gpu_data, ref skeleton) => {
+                    (material, gpu_data, skeleton)
+                }
                 _ => continue,
             };
-
             let mx_world: mint::ColumnMatrix4<_> = Matrix4::from(w.world_transform).into();
             let pso_data = material.to_pso_data();
 
@@ -932,16 +932,35 @@ impl Renderer {
                 continue;
             }
             let instance = match pso_data {
-                PsoData::Basic { color, map, param0 } => { ??? },
-                PsoData::Pbr { .. } => Instance::pbr(mx_world.into()),
+                PsoData::Basic { color, map, param0 } => {
+                    let uv_range = match map {
+                        Some(ref map) => map.uv_range(),
+                        None => [0.0; 4],
+                    };
+                    Instance::basic(mx_world.into(), color, uv_range, param0)
+                }
+                PsoData::Pbr { .. } => {
+                    Instance::pbr(mx_world.into())
+                }
             };
-
+            let joint_buffer_view = if let Some(ref ptr) = *skeleton {
+                match hub[ptr].sub_node {
+                    SubNode::Skeleton(ref skeleton_data) => {
+                        skeleton_data.gpu_buffer_view.clone()
+                    }
+                    _ => unreachable!()
+                }
+            } else {
+                self.default_joint_buffer_view.clone()
+            };
+            
             Self::render_mesh(
                 &mut self.encoder,
                 self.const_buf.clone(),
                 gpu_data.instances.clone(),
                 self.light_buf.clone(),
                 self.pbr_buf.clone(),
+                self.displacement_contributions_buf.clone(),
                 self.out_color.clone(),
                 self.out_depth.clone(),
                 &self.pso,
@@ -953,6 +972,8 @@ impl Renderer {
                 &shadow_sampler,
                 &shadow0,
                 &shadow1,
+                &gpu_data.displacement_contributions,
+                joint_buffer_view,
             );
         }
 
@@ -975,6 +996,7 @@ impl Renderer {
                 self.inst_buf.clone(),
                 self.light_buf.clone(),
                 self.pbr_buf.clone(),
+                self.displacement_contributions_buf.clone(),
                 self.out_color.clone(),
                 self.out_depth.clone(),
                 &self.pso,
@@ -986,6 +1008,8 @@ impl Renderer {
                 &shadow_sampler,
                 &shadow0,
                 &shadow1,
+                &ZEROED_DISPLACEMENT_CONTRIBUTION,
+                self.default_joint_buffer_view.clone(),
             );
         }
 
@@ -1092,6 +1116,7 @@ impl Renderer {
         inst_buf: h::Buffer<back::Resources, Instance>,
         light_buf: h::Buffer<back::Resources, LightParam>,
         pbr_buf: h::Buffer<back::Resources, PbrParams>,
+        displacement_contributions_buf: h::Buffer<back::Resources, DisplacementContribution>,
         out_color: h::RenderTargetView<back::Resources, ColorFormat>,
         out_depth: h::DepthStencilView<back::Resources, DepthFormat>,
         pso: &PipelineStates,
@@ -1103,6 +1128,8 @@ impl Renderer {
         shadow_sampler: &h::Sampler<back::Resources>,
         shadow0: &h::ShaderResourceView<back::Resources, f32>,
         shadow1: &h::ShaderResourceView<back::Resources, f32>,
+        displacement_contributions: &[DisplacementContribution; MAX_TARGETS],
+        joint_transform_buffer_view: h::ShaderResourceView<back::Resources, [f32; 4]>,
     ) {
         encoder.update_buffer(&inst_buf, instances, 0).unwrap();
 
@@ -1119,6 +1146,7 @@ impl Renderer {
         match material.to_pso_data() {
             PsoData::Pbr { maps, params } => {
                 encoder.update_constant_buffer(&pbr_buf, &params);
+                encoder.update_buffer(&displacement_contributions_buf, &displacement_contributions[..], 0).unwrap();
                 let map_params = maps.into_params(map_default);
                 let data = pbr_pipe::Data {
                     vbuf: vertex_buf,
@@ -1133,6 +1161,8 @@ impl Renderer {
                     occlusion_map: map_params.occlusion,
                     color_target: out_color.clone(),
                     depth_target: out_depth.clone(),
+                    displacement_contributions: displacement_contributions_buf.clone(),
+                    joint_transforms: joint_transform_buffer_view,
                 };
                 encoder.draw(&slice, &pso.pbr, &data);
             }

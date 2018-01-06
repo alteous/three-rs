@@ -4,7 +4,7 @@ use light::{ShadowMap, ShadowProjection};
 use material::Material;
 use mesh::{DynamicMesh, MAX_TARGETS};
 use node::{NodeInternal, NodePointer, TransformInternal};
-use object::{Base, Object};
+use object::Base;
 use render::{BackendResources, GpuData};
 use scene::Scene;
 use skeleton::{Bone, Skeleton};
@@ -125,20 +125,6 @@ impl Hub {
         Arc::new(Mutex::new(hub))
     }
 
-    pub(crate) fn get<T: Object>(
-        &self,
-        object: &T,
-    ) -> &NodeInternal {
-        &self.nodes[&object.as_ref().node]
-    }
-
-    pub(crate) fn get_mut<T: Object>(
-        &mut self,
-        object: &T,
-    ) -> &NodeInternal {
-        &mut self.nodes[&object.as_ref().node]
-    }
-
     pub(crate) fn spawn(
         &mut self,
         sub: SubNode,
@@ -243,14 +229,6 @@ impl Hub {
                         cur_ptr = node.next_sibling.clone(); //TODO: avoid clone
                     }
                 }
-                Operation::SetAudio(operation) => {
-                    match self.nodes[&ptr].sub_node {
-                        SubNode::Audio(ref mut data) => {
-                            Hub::process_audio(operation, data);
-                        }
-                        _ => unreachable!()
-                    }
-                },
                 Operation::SetSkeleton(skeleton) => {
                     if let SubNode::Visual(_, _, ref mut s) = self.nodes[&ptr].sub_node {
                         *s = Some(skeleton);
@@ -300,14 +278,6 @@ impl Hub {
                     match self.nodes[&ptr].sub_node {
                         SubNode::UiText(ref mut data) => {
                             Hub::process_text(operation, data);
-                        }
-                        _ => unreachable!()
-                    }
-                }
-                Operation::SetShadow(map, proj) => {
-                    match self.nodes[&ptr].sub_node {
-                        SubNode::Light(ref mut data) => {
-                            data.shadow = Some((map, proj));
                         }
                         _ => unreachable!()
                     }

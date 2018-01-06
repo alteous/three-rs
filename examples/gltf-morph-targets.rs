@@ -12,7 +12,7 @@ fn main() {
     let default = concat!(env!("CARGO_MANIFEST_DIR"), "/test_data/AnimatedMorphCube/AnimatedMorphCube.gltf");
     let path = std::env::args().nth(1).unwrap_or(default.into());
     let gltf = window.factory.load_gltf(&path);
-    window.scene.add(&gltf.group);
+    window.scene.add(&gltf);
 
     let mut mixer = three::animation::Mixer::new();
     for clip in gltf.clips {
