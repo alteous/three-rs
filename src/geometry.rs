@@ -78,7 +78,7 @@ pub struct Geometry {
 #[derive(Clone, Debug, Default)]
 pub struct Joints {
     /// Joint indices, encoded as floats.
-    pub indices: Vec<[f32; 4]>,
+    pub indices: Vec<[i32; 4]>,
     /// Joint weights.
     pub weights: Vec<[f32; 4]>,
 }

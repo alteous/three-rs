@@ -97,15 +97,8 @@ pub const DEFAULT_VERTEX: Vertex = Vertex {
     uv: [0.0, 0.0],
     normal: [I8Norm(0), I8Norm(127), I8Norm(0), I8Norm(0)],
     tangent: [I8Norm(127), I8Norm(0), I8Norm(0), I8Norm(0)],
-    joint_indices: [0.0, 0.0, 0.0, 0.0],
+    joint_indices: [0, 0, 0, 0],
     joint_weights: [1.0, 1.0, 1.0, 1.0],
-    displacement0: [0.0, 0.0, 0.0, 0.0],
-    displacement1: [0.0, 0.0, 0.0, 0.0],
-    displacement2: [0.0, 0.0, 0.0, 0.0],
-    displacement3: [0.0, 0.0, 0.0, 0.0],
-    displacement4: [0.0, 0.0, 0.0, 0.0],
-    displacement5: [0.0, 0.0, 0.0, 0.0],
-    displacement6: [0.0, 0.0, 0.0, 0.0],
 };
 
 impl Default for Vertex {
@@ -124,6 +117,7 @@ pub const ZEROED_DISPLACEMENT_CONTRIBUTION: [DisplacementContribution; MAX_TARGE
     DisplacementContribution { position: 0.0, normal: 0.0, tangent: 0.0, weight: 0.0 },
     DisplacementContribution { position: 0.0, normal: 0.0, tangent: 0.0, weight: 0.0 },
     DisplacementContribution { position: 0.0, normal: 0.0, tangent: 0.0, weight: 0.0 },
+    DisplacementContribution { position: 0.0, normal: 0.0, tangent: 0.0, weight: 0.0 },
 ];
 
 #[cfg_attr(rustfmt, rustfmt_skip)]
@@ -133,15 +127,8 @@ gfx_defines! {
         uv: [f32; 2] = "a_TexCoord",
         normal: [gfx::format::I8Norm; 4] = "a_Normal",
         tangent: [gfx::format::I8Norm; 4] = "a_Tangent",
-        joint_indices: [f32; 4] = "a_JointIndices",
+        joint_indices: [i32; 4] = "a_JointIndices",
         joint_weights: [f32; 4] = "a_JointWeights",
-        displacement0: [f32; 4] = "a_Displacement0",
-        displacement1: [f32; 4] = "a_Displacement1",
-        displacement2: [f32; 4] = "a_Displacement2",
-        displacement3: [f32; 4] = "a_Displacement3",
-        displacement4: [f32; 4] = "a_Displacement4",
-        displacement5: [f32; 4] = "a_Displacement5",
-        displacement6: [f32; 4] = "a_Displacement6",
     }
 
     vertex Instance {
@@ -238,7 +225,7 @@ gfx_defines! {
         lights: gfx::ConstantBuffer<LightParam> = "b_Lights",
         displacement_contributions: gfx::ConstantBuffer<DisplacementContribution> = "b_DisplacementContributions",
         joint_transforms: gfx::ShaderResource<[f32; 4]> = "b_JointTransforms",
-
+        displacements: gfx::ShaderResource<[f32; 4]> = "b_Displacements",
         base_color_map: gfx::TextureSampler<[f32; 4]> = "u_BaseColorSampler",
 
         normal_map: gfx::TextureSampler<[f32; 4]> = "u_NormalSampler",
@@ -307,6 +294,7 @@ pub(crate) struct GpuData {
     pub slice: gfx::Slice<back::Resources>,
     pub vertices: h::Buffer<back::Resources, Vertex>,
     pub instances: h::Buffer<back::Resources, Instance>,
+    pub displacements: Option<(h::Buffer<back::Resources, [f32; 4]>, h::ShaderResourceView<back::Resources, [f32; 4]>)>,
     pub pending: Option<DynamicData>,
     pub instance_cache_key: Option<InstanceCacheKey>,
     pub displacement_contributions: [DisplacementContribution; MAX_TARGETS],
@@ -527,6 +515,7 @@ pub struct Renderer {
     out_depth: h::DepthStencilView<back::Resources, DepthFormat>,
     displacement_contributions_buf: gfx::handle::Buffer<back::Resources, DisplacementContribution>,
     default_joint_buffer_view: gfx::handle::ShaderResourceView<back::Resources, [f32; 4]>,
+    default_displacement_buffer_view: gfx::handle::ShaderResourceView<back::Resources, [f32; 4]>,
     pso: PipelineStates,
     map_default: Texture<[f32; 4]>,
     shadow_default: Texture<f32>,
@@ -581,6 +570,25 @@ impl Renderer {
         let default_joint_buffer_view = gl_factory
             .view_buffer_as_shader_resource(&default_joint_buffer)
             .unwrap();
+        let default_displacement_buffer = gl_factory
+            .create_buffer_immutable(
+                &[
+                    [0.0, 0.0, 0.0, 0.0],
+                    [0.0, 0.0, 0.0, 0.0],
+                    [0.0, 0.0, 0.0, 0.0],
+                    [0.0, 0.0, 0.0, 0.0],
+                    [0.0, 0.0, 0.0, 0.0],
+                    [0.0, 0.0, 0.0, 0.0],
+                    [0.0, 0.0, 0.0, 0.0],
+                    [0.0, 0.0, 0.0, 0.0],
+                ],
+                gfx::buffer::Role::Constant,
+                gfx::memory::Bind::SHADER_RESOURCE,
+            )
+            .unwrap();
+        let default_displacement_buffer_view = gl_factory
+            .view_buffer_as_shader_resource(&default_displacement_buffer)
+            .unwrap();
         let encoder = gl_factory.create_command_buffer().into();
         let const_buf = gl_factory.create_constant_buffer(1);
         let quad_buf = gl_factory.create_constant_buffer(1);
@@ -610,6 +618,7 @@ impl Renderer {
             out_depth,
             pso,
             default_joint_buffer_view,
+            default_displacement_buffer_view,
             map_default: Texture::new(srv_white, sampler, [1, 1]),
             shadow_default: Texture::new(srv_shadow, sampler_shadow, [1, 1]),
             instance_cache: HashMap::new(),
@@ -971,7 +980,12 @@ impl Renderer {
                 &shadow0,
                 &shadow1,
                 &gpu_data.displacement_contributions,
+                match gpu_data.displacements {
+                    Some((_, ref view)) => view.clone(),
+                    None => self.default_displacement_buffer_view.clone(),
+                },
                 joint_buffer_view,
+                gpu_data.displacements.is_some(),
             );
         }
 
@@ -1007,7 +1021,9 @@ impl Renderer {
                 &shadow0,
                 &shadow1,
                 &ZEROED_DISPLACEMENT_CONTRIBUTION,
+                self.default_displacement_buffer_view.clone(),
                 self.default_joint_buffer_view.clone(),
+                false,
             );
         }
 
@@ -1127,7 +1143,9 @@ impl Renderer {
         shadow0: &h::ShaderResourceView<back::Resources, f32>,
         shadow1: &h::ShaderResourceView<back::Resources, f32>,
         displacement_contributions: &[DisplacementContribution; MAX_TARGETS],
+        displacements: h::ShaderResourceView<back::Resources, [f32; 4]>,
         joint_transform_buffer_view: h::ShaderResourceView<back::Resources, [f32; 4]>,
+        displace: bool,
     ) {
         encoder.update_buffer(&inst_buf, instances, 0).unwrap();
 
@@ -1142,9 +1160,12 @@ impl Renderer {
 
         //TODO: batch per PSO
         match material.to_pso_data() {
-            PsoData::Pbr { maps, params } => {
+            PsoData::Pbr { maps, mut params } => {
+                if displace {
+                    encoder.update_buffer(&displacement_contributions_buf, &displacement_contributions[0..MAX_TARGETS], 0).unwrap();
+                    params.pbr_flags |= pso_data::PbrFlags::DISPLACEMENT_BUFFER.bits();
+                }
                 encoder.update_constant_buffer(&pbr_buf, &params);
-                encoder.update_buffer(&displacement_contributions_buf, &displacement_contributions[..], 0).unwrap();
                 let map_params = maps.into_params(map_default);
                 let data = pbr_pipe::Data {
                     vbuf: vertex_buf,
@@ -1160,6 +1181,7 @@ impl Renderer {
                     color_target: out_color.clone(),
                     depth_target: out_depth.clone(),
                     displacement_contributions: displacement_contributions_buf.clone(),
+                    displacements: displacements,
                     joint_transforms: joint_transform_buffer_view,
                 };
                 encoder.draw(&slice, &pso.pbr, &data);

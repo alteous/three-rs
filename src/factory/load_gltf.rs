@@ -303,7 +303,7 @@ fn load_meshes(
                 Vec::new()
             };
             let joint_indices = if let Some(iter) = primitive.joints_u16(0, buffers) {
-                iter.map(|x| [x[0] as f32, x[1] as f32, x[2] as f32, x[3] as f32]).collect()
+                iter.map(|x| [x[0] as i32, x[1] as i32, x[2] as i32, x[3] as i32]).collect()
             } else {
                 Vec::new()
             };

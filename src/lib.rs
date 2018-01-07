@@ -312,6 +312,7 @@ mod sprite;
 mod text;
 mod texture;
 mod util;
+
 #[cfg(feature = "opengl")]
 pub mod window;
 
