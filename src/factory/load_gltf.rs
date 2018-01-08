@@ -235,7 +235,7 @@ fn load_meshes(
     fn load_morph_targets(
         primitive: &gltf::Primitive,
         buffers: &gltf_importer::Buffers,
-    ) -> (geometry::MorphTargets, [Target; MAX_TARGETS]) {
+    ) -> (geometry::MorphTargets, [Target; MAX_TARGETS], usize) {
         let mut vertices = Vec::new();
         let mut normals = Vec::new();
         let mut tangents = Vec::new();
@@ -264,12 +264,16 @@ fn load_meshes(
             }
         }
 
-        (geometry::MorphTargets {
-            names: VecMap::new(),
-            vertices,
-            normals,
-            tangents,
-        }, targets)
+        (
+            geometry::MorphTargets {
+                names: VecMap::new(),
+                vertices,
+                normals,
+                tangents,
+            },
+            targets,
+            i,
+        )
     }
     
     let mut meshes = VecMap::new();
@@ -312,7 +316,7 @@ fn load_meshes(
             } else {
                 Vec::new()
             };
-            let (morph_targets, mesh_targets) = load_morph_targets(&primitive, &buffers);
+            let (morph_targets, mesh_targets, nr_targets) = load_morph_targets(&primitive, &buffers);
             let geometry = Geometry {
                 vertices,
                 normals,
@@ -334,7 +338,11 @@ fn load_meshes(
                     map: None,
                 }.into()
             };
-            let mut mesh = factory.mesh_with_targets(geometry, material, mesh_targets);
+            let mesh = if nr_targets > 0 {
+                factory.mesh_with_targets(geometry, material, mesh_targets)
+            } else {
+                factory.mesh(geometry, material)
+            };
             primitives.push(mesh);
         }
         meshes.insert(mesh.index(), primitives);

@@ -249,29 +249,47 @@ impl Hub {
                         }
                     }
 
-                    // Hack around borrow checker rules:
-                    // if
-                    {
-                        match self.nodes[&ptr].sub_node {
-                            SubNode::Visual(_, ref mut gpu_data, _) => {
-                                set_weights(gpu_data, weights);
-                            }
-                            _ => continue,
-                        }
+                    enum Ty {
+                        Mesh,
+                        Group,
+                        Other,
                     }
-                    // else
-                    {
-                        // Set the weights of every immediate child node.
-                        let mut x = self.nodes[&ptr].next_sibling.clone();
-                        while let Some(child_ptr) = x {
-                            match &mut self.nodes[&child_ptr].sub_node {
-                                &mut SubNode::Visual(_, ref mut gpu_data, _) => {
+
+                    let ty = match self.nodes[&ptr].sub_node {
+                        SubNode::Visual(_, _, _) => Ty::Mesh,
+                        SubNode::Group { .. } => Ty::Group,
+                        _ => Ty::Other,
+                    };
+
+                    match ty {
+                        Ty::Mesh => {
+                            match self.nodes[&ptr].sub_node {
+                                SubNode::Visual(_, ref mut gpu_data, _) => {
                                     set_weights(gpu_data, weights);
                                 }
-                                _ => {},
+                                _ => unreachable!()
                             }
-                            x = self.nodes[&child_ptr].next_sibling.clone();
                         }
+                        Ty::Group => {
+                            let mut x;
+                            {
+                                match self.nodes[&ptr].sub_node {
+                                    SubNode::Group { ref first_child } => x = first_child.clone(),
+                                    _ => unreachable!(),
+                                }
+                            }
+
+                            while let Some(ptr) = x {
+                                match &mut self.nodes[&ptr].sub_node {
+                                    &mut SubNode::Visual(_, ref mut gpu_data, _) => {
+                                        set_weights(gpu_data, weights);
+                                    }
+                                    _ => {},
+                                }
+                                x = self.nodes[&ptr].next_sibling.clone();
+                            }
+                        }
+                        Ty::Other => {}
                     }
                 }
                 Operation::SetText(operation) => {

@@ -915,6 +915,7 @@ impl Renderer {
                 }
                 _ => continue,
             };
+
             let mx_world: mint::ColumnMatrix4<_> = Matrix4::from(w.world_transform).into();
             let pso_data = material.to_pso_data();
 
