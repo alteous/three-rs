@@ -249,47 +249,22 @@ impl Hub {
                         }
                     }
 
-                    enum Ty {
-                        Mesh,
-                        Group,
-                        Other,
-                    }
-
-                    let ty = match self.nodes[&ptr].sub_node {
-                        SubNode::Visual(_, _, _) => Ty::Mesh,
-                        SubNode::Group { .. } => Ty::Group,
-                        _ => Ty::Other,
+                    let mut x = match self.nodes[&ptr].sub_node {
+                        SubNode::Visual(_, ref mut gpu_data, _) => {
+                            set_weights(gpu_data, weights);
+                            continue;
+                        }
+                        SubNode::Group { ref first_child } => first_child.clone(),
+                        _ => continue,
                     };
 
-                    match ty {
-                        Ty::Mesh => {
-                            match self.nodes[&ptr].sub_node {
-                                SubNode::Visual(_, ref mut gpu_data, _) => {
-                                    set_weights(gpu_data, weights);
-                                }
-                                _ => unreachable!()
-                            }
+                    while let Some(ptr) = x {
+                        match &mut self.nodes[&ptr].sub_node {
+                            &mut SubNode::Visual(_, ref mut gpu_data, _) => {
+                                set_weights(gpu_data, weights);
+                            } _ => {},
                         }
-                        Ty::Group => {
-                            let mut x;
-                            {
-                                match self.nodes[&ptr].sub_node {
-                                    SubNode::Group { ref first_child } => x = first_child.clone(),
-                                    _ => unreachable!(),
-                                }
-                            }
-
-                            while let Some(ptr) = x {
-                                match &mut self.nodes[&ptr].sub_node {
-                                    &mut SubNode::Visual(_, ref mut gpu_data, _) => {
-                                        set_weights(gpu_data, weights);
-                                    }
-                                    _ => {},
-                                }
-                                x = self.nodes[&ptr].next_sibling.clone();
-                            }
-                        }
-                        Ty::Other => {}
+                        x = self.nodes[&ptr].next_sibling.clone();
                     }
                 }
                 Operation::SetText(operation) => {
